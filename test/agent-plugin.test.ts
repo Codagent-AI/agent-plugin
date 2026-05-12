@@ -87,7 +87,7 @@ describe('agent-plugin', () => {
     expect(result.method).toBe('skills');
     expect(result.scope).toBe('user');
     expect(result.message).toContain('7 skills copied to');
-    expect(result.message).toContain('.codex/skills');
+    expect(result.message).toContain('.agents/skills');
     expect(result.commands).toEqual([
       "npx --yes skills add Codagent-AI/agent-skills --global --yes --skill '*' --agent codex",
     ]);

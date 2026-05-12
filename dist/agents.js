@@ -70,14 +70,8 @@ export async function detectInstalledAgents(runner) {
     return uniqueAgents(detected);
 }
 export function fallbackSkillsDir(skillsName) {
-    if (skillsName === 'codex')
-        return { dir: path.join(codexHome(), 'skills'), exact: true };
-    if (skillsName === 'cursor')
-        return { dir: path.join(os.homedir(), '.cursor', 'skills'), exact: true };
-    if (skillsName === 'opencode') {
-        return { dir: path.join(configHome(), 'opencode', 'skills'), exact: true };
-    }
-    return { dir: path.join(os.homedir(), '.agents', 'skills'), exact: false };
+    void skillsName;
+    return { dir: path.join(os.homedir(), '.agents', 'skills'), exact: true };
 }
 function codexHome() {
     return process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
