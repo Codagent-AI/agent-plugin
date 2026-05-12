@@ -11,6 +11,7 @@ export async function installForAgent(opts: {
   dryRun: boolean;
   runner: CommandRunner;
   skillCount?: number;
+  pluginName?: string;
 }): Promise<AgentResult> {
   if (opts.agent.native === 'claude') return installClaude(opts);
   if (opts.agent.native === 'copilot') return installCopilot(opts);
@@ -44,10 +45,12 @@ async function installClaude(opts: {
   scope: Scope;
   dryRun: boolean;
   runner: CommandRunner;
+  pluginName?: string;
 }): Promise<AgentResult> {
   const source = parseGithubSource(opts.source);
+  const pluginName = opts.pluginName ?? source.pluginName;
   const args1 = ['plugin', 'marketplace', 'add', source.normalized];
-  const args2 = ['plugin', 'install', source.pluginName, '--scope', opts.scope];
+  const args2 = ['plugin', 'install', pluginName, '--scope', opts.scope];
   const commands = [formatCommand('claude', args1), formatCommand('claude', args2)];
   if (opts.dryRun) return planned(opts.agent.name, 'install', 'native', opts.scope, commands, 'Claude plugin install');
 

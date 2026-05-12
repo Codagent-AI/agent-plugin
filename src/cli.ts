@@ -3,7 +3,7 @@ import { installForAgent, listForAgent, updateForAgent } from './adapters.js';
 import { resolveTargetAgents, uniqueAgents } from './agents.js';
 import { printAggregate, summarizeOk } from './output.js';
 import { SubprocessRunner } from './runner.js';
-import { countSkillsFromGithubSource } from './skills-discovery.js';
+import { inspectGithubSource } from './skills-discovery.js';
 import { parseGithubSource } from './source.js';
 import type { AgentResult, CommandRunner } from './types.js';
 
@@ -35,8 +35,8 @@ export async function runCli(argv: string[], runner: CommandRunner = new Subproc
         yes: options.yes ?? false,
         runner,
       });
-      const skillCount = options.dryRun
-        ? await countSkillsForFallbackAgents(source, agents, runner)
+      const sourceInspection = needsSourceInspection(options.dryRun ?? false, agents)
+        ? await inspectGithubSource(parseGithubSource(source).normalized, runner)
         : undefined;
       const results: AgentResult[] = [];
       for (const agent of agents) {
@@ -47,7 +47,8 @@ export async function runCli(argv: string[], runner: CommandRunner = new Subproc
             scope: options.project ? 'project' : 'user',
             dryRun: options.dryRun ?? false,
             runner,
-            skillCount,
+            skillCount: sourceInspection?.skillCount,
+            pluginName: sourceInspection?.claudePluginName,
           }),
         );
       }
@@ -141,14 +142,11 @@ export async function runCli(argv: string[], runner: CommandRunner = new Subproc
   return exitCode;
 }
 
-async function countSkillsForFallbackAgents(
-  source: string,
+function needsSourceInspection(
+  dryRun: boolean,
   agents: Array<{ native?: string }>,
-  runner: CommandRunner,
-): Promise<number | undefined> {
-  if (!agents.some((agent) => !agent.native)) return undefined;
-  const parsed = parseGithubSource(source);
-  return countSkillsFromGithubSource(parsed.normalized, runner);
+): boolean {
+  return agents.some((agent) => agent.native === 'claude') || (dryRun && agents.some((agent) => !agent.native));
 }
 
 function printError(error: unknown, json: boolean): void {
