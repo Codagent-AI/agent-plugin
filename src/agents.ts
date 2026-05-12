@@ -85,12 +85,8 @@ export async function detectInstalledAgents(runner: CommandRunner): Promise<Norm
 }
 
 export function fallbackSkillsDir(skillsName: string): { dir: string; exact: boolean } {
-  if (skillsName === 'codex') return { dir: path.join(codexHome(), 'skills'), exact: true };
-  if (skillsName === 'cursor') return { dir: path.join(os.homedir(), '.cursor', 'skills'), exact: true };
-  if (skillsName === 'opencode') {
-    return { dir: path.join(configHome(), 'opencode', 'skills'), exact: true };
-  }
-  return { dir: path.join(os.homedir(), '.agents', 'skills'), exact: false };
+  void skillsName;
+  return { dir: path.join(os.homedir(), '.agents', 'skills'), exact: true };
 }
 
 function codexHome(): string {
