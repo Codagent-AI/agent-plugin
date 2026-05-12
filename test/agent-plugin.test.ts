@@ -40,6 +40,23 @@ describe('agent-plugin', () => {
     ]);
   });
 
+  it('uses discovered Claude plugin name when it differs from repo name', async () => {
+    const runner = new MockRunner();
+    const result = await installForAgent({
+      agent: normalizeAgent('claude'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'user',
+      dryRun: true,
+      runner,
+      pluginName: 'codagent',
+    });
+
+    expect(result.commands).toEqual([
+      'claude plugin marketplace add Codagent-AI/agent-skills',
+      'claude plugin install codagent --scope user',
+    ]);
+  });
+
   it('builds Copilot dry-run command and keeps user scope when project requested', async () => {
     const runner = new MockRunner();
     const result = await installForAgent({
