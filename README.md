@@ -5,6 +5,12 @@ as the user-level fallback.
 
 ## Usage
 
+Install:
+
+```bash
+npm install -g @codagent-ai/agent-plugin
+```
+
 ```bash
 agent-plugin add <source> [options]
 agent-plugin install <source> [options]
@@ -42,3 +48,10 @@ npx --yes skills add <source> --global --yes --skill '*' --agent <agent>
 Dry runs print the exact commands for native agents. For fallback agents, dry
 runs report how many skills would be copied and the target global skills
 directory when known.
+
+## Release
+
+Releases use Changesets, but contributors do not need to create changesets on
+normal PRs. The `.claude/commands/release.md` flow auto-generates changesets
+from merged PRs, creates the release PR, and publishing happens when that
+release PR merges to `main`.
