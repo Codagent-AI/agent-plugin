@@ -29,26 +29,31 @@ async function installClaude(opts) {
     const args1 = ['plugin', 'marketplace', 'add', source.normalized];
     const args2 = ['plugin', 'install', pluginName, '--scope', opts.scope];
     const commands = [formatCommand('claude', args1), formatCommand('claude', args2)];
-    if (opts.dryRun)
-        return planned(opts.agent.name, 'install', 'native', opts.scope, commands, 'Claude plugin install');
+    if (opts.dryRun) {
+        return planned(opts.agent.name, 'install', 'native', opts.scope, commands, `Claude plugin will be installed from ${githubRepoUrl(source.normalized)} via:`);
+    }
     const add = await opts.runner.run('claude', args1);
     if (add.code !== 0)
         return failed(opts.agent.name, 'install', 'native', opts.scope, commands, add);
     const install = await opts.runner.run('claude', args2);
     if (install.code !== 0)
         return failed(opts.agent.name, 'install', 'native', opts.scope, commands, install);
-    return success(opts.agent.name, 'install', 'native', opts.scope, commands, 'Claude plugin installed');
+    return success(opts.agent.name, 'install', 'native', opts.scope, commands, `Claude plugin installed from ${githubRepoUrl(source.normalized)} via:`);
 }
 async function updateClaude(opts) {
     const plugin = pluginName(opts.plugin);
     const args1 = ['plugin', 'marketplace', 'update', plugin];
-    const args2 = ['plugin', 'update', plugin];
-    const commands = [formatCommand('claude', args1), formatCommand('claude', args2)];
+    const plannedArgs2 = ['plugin', 'update', plugin];
+    const plannedCommands = [formatCommand('claude', args1), formatCommand('claude', plannedArgs2)];
     if (opts.dryRun)
-        return planned(opts.agent.name, 'update', 'native', opts.scope, commands, 'Claude plugin update');
+        return planned(opts.agent.name, 'update', 'native', opts.scope, plannedCommands, 'Claude plugin update');
     const market = await opts.runner.run('claude', args1);
     if (market.code !== 0)
-        return failed(opts.agent.name, 'update', 'native', opts.scope, commands, market);
+        return failed(opts.agent.name, 'update', 'native', opts.scope, [formatCommand('claude', args1)], market);
+    const list = await opts.runner.run('claude', ['plugin', 'list', '--json']);
+    const installedPlugin = list.code === 0 ? resolveClaudeInstalledPlugin(list.stdout, plugin) : undefined;
+    const args2 = ['plugin', 'update', installedPlugin ?? plugin];
+    const commands = [formatCommand('claude', args1), formatCommand('claude', args2)];
     const update = await opts.runner.run('claude', args2);
     if (update.code !== 0)
         return failed(opts.agent.name, 'update', 'native', opts.scope, commands, update);
@@ -60,12 +65,14 @@ async function installCopilot(opts) {
     const commands = [formatCommand('copilot', args)];
     const scope = 'user';
     const scopeNote = opts.scope === 'project' ? 'Copilot project scope is unsupported; using user scope.' : undefined;
+    const installMessage = `Copilot plugin ${opts.dryRun ? 'will be installed' : 'installed'} from ${githubRepoUrl(source.normalized)} via:`;
+    const message = scopeNote ? `${scopeNote} ${installMessage}` : installMessage;
     if (opts.dryRun)
-        return planned(opts.agent.name, 'install', 'native', scope, commands, scopeNote ?? 'Copilot plugin install');
+        return planned(opts.agent.name, 'install', 'native', scope, commands, message);
     const result = await opts.runner.run('copilot', args);
     if (result.code !== 0)
         return failed(opts.agent.name, 'install', 'native', scope, commands, result);
-    return success(opts.agent.name, 'install', 'native', scope, commands, scopeNote ?? 'Copilot plugin installed');
+    return success(opts.agent.name, 'install', 'native', scope, commands, message);
 }
 async function updateCopilot(opts) {
     const plugin = pluginName(opts.plugin);
@@ -80,17 +87,23 @@ async function updateCopilot(opts) {
     return success(opts.agent.name, 'update', 'native', scope, commands, 'Copilot plugin updated');
 }
 async function installSkillsFallback(opts) {
+    const source = parseGithubSource(opts.source);
     const args = ['--yes', 'skills', 'add', opts.source, '--global', '--yes', '--skill', '*', '--agent', opts.agent.skillsName];
     const commands = [formatCommand('npx', args)];
     const dirInfo = fallbackSkillsDir(opts.agent.skillsName);
     const count = opts.skillCount ?? 0;
-    const detail = dirInfo.exact ? `${count} skills copied to ${dirInfo.dir}` : `${count} skills copied to approximately ${dirInfo.dir}`;
+    const plannedDetail = dirInfo.exact
+        ? `${count} skills will be copied to ${dirInfo.dir} from ${githubRepoUrl(source.normalized)} via:`
+        : `${count} skills will be copied to approximately ${dirInfo.dir} from ${githubRepoUrl(source.normalized)} via:`;
+    const successDetail = dirInfo.exact
+        ? `${count} skills copied to ${dirInfo.dir} from ${githubRepoUrl(source.normalized)} via:`
+        : `${count} skills copied to approximately ${dirInfo.dir} from ${githubRepoUrl(source.normalized)} via:`;
     if (opts.dryRun)
-        return planned(opts.agent.name, 'install', 'skills', 'user', commands, detail);
+        return planned(opts.agent.name, 'install', 'skills', 'user', commands, plannedDetail);
     const result = await opts.runner.run('npx', args);
     if (result.code !== 0)
         return failed(opts.agent.name, 'install', 'skills', 'user', commands, result);
-    return success(opts.agent.name, 'install', 'skills', 'user', commands, detail);
+    return success(opts.agent.name, 'install', 'skills', 'user', commands, successDetail);
 }
 async function updateSkillsFallback(opts) {
     const args = ['--yes', 'skills', 'update'];
@@ -175,6 +188,23 @@ function pluginName(value) {
     }
     catch {
         return value;
+    }
+}
+function githubRepoUrl(normalizedSource) {
+    return `https://github.com/${normalizedSource}.git`;
+}
+function resolveClaudeInstalledPlugin(stdout, plugin) {
+    try {
+        const parsed = JSON.parse(stdout);
+        const entries = Array.isArray(parsed) ? parsed : (parsed.plugins ?? []);
+        const names = entries.flatMap((entry) => {
+            const e = entry;
+            return [e.id, e.name].filter((value) => typeof value === 'string' && value.length > 0);
+        });
+        return names.find((name) => name === plugin) ?? names.find((name) => name.startsWith(`${plugin}@`));
+    }
+    catch {
+        return undefined;
     }
 }
 function planned(agent, action, method, scope, commands, message) {

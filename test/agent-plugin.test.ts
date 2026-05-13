@@ -55,6 +55,7 @@ describe('agent-plugin', () => {
     });
 
     expect(result.status).toBe('planned');
+    expect(result.message).toBe('Claude plugin will be installed from https://github.com/Codagent-AI/agent-skills.git via:');
     expect(result.commands).toEqual([
       'claude plugin marketplace add Codagent-AI/agent-skills',
       'claude plugin install agent-skills --scope user',
@@ -78,6 +79,50 @@ describe('agent-plugin', () => {
     ]);
   });
 
+  it('uses past tense for completed Claude installs', async () => {
+    const runner = new MockRunner();
+    const result = await installForAgent({
+      agent: normalizeAgent('claude'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'user',
+      dryRun: false,
+      runner,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.message).toBe('Claude plugin installed from https://github.com/Codagent-AI/agent-skills.git via:');
+  });
+
+  it('updates Claude using the installed plugin id when it includes a source suffix', async () => {
+    const runner = new MockRunner();
+    runner.set('claude', ['plugin', 'list', '--json'], {
+      stdout: JSON.stringify([
+        {
+          id: 'agent-validator@agent-validator',
+          scope: 'user',
+        },
+      ]),
+    });
+
+    const result = await updateForAgent({
+      agent: normalizeAgent('claude'),
+      plugin: 'agent-validator',
+      scope: 'user',
+      dryRun: false,
+      runner,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.commands).toEqual([
+      'claude plugin marketplace update agent-validator',
+      'claude plugin update agent-validator@agent-validator',
+    ]);
+    expect(runner.calls).toContainEqual({
+      command: 'claude',
+      args: ['plugin', 'update', 'agent-validator@agent-validator'],
+    });
+  });
+
   it('builds Copilot dry-run command and keeps user scope when project requested', async () => {
     const runner = new MockRunner();
     const result = await installForAgent({
@@ -91,6 +136,7 @@ describe('agent-plugin', () => {
     expect(result.status).toBe('planned');
     expect(result.scope).toBe('user');
     expect(result.message).toContain('project scope is unsupported');
+    expect(result.message).toContain('from https://github.com/Codagent-AI/agent-skills.git via:');
     expect(result.commands).toEqual(['copilot plugin install Codagent-AI/agent-skills']);
   });
 
@@ -107,11 +153,29 @@ describe('agent-plugin', () => {
 
     expect(result.method).toBe('skills');
     expect(result.scope).toBe('user');
-    expect(result.message).toContain('7 skills copied to');
+    expect(result.message).toContain('7 skills will be copied to');
+    expect(result.message).toContain('from https://github.com/Codagent-AI/agent-skills.git');
+    expect(result.message).toContain('via:');
     expect(result.message).toContain('.agents/skills');
     expect(result.commands).toEqual([
       "npx --yes skills add Codagent-AI/agent-skills --global --yes --skill '*' --agent codex",
     ]);
+  });
+
+  it('uses past tense for completed fallback skills installs', async () => {
+    const runner = new MockRunner();
+    const result = await installForAgent({
+      agent: normalizeAgent('codex'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: false,
+      runner,
+      skillCount: 7,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.message).toContain('7 skills copied to');
+    expect(result.message).toContain('from https://github.com/Codagent-AI/agent-skills.git via:');
   });
 
   it('continues after partial failure and returns non-zero aggregate', async () => {
