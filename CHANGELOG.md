@@ -1,5 +1,10 @@
 # @codagent-ai/agent-plugin
 
+## 0.1.3
+
+- Warn when project scope is requested but a skills fallback install will copy
+  skills at user/global scope.
+
 ## 0.1.2
 
 - Included source GitHub URLs in Claude, Copilot, and fallback skills install

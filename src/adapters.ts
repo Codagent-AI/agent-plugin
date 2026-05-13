@@ -143,6 +143,7 @@ async function updateCopilot(opts: {
 async function installSkillsFallback(opts: {
   agent: NormalizedAgent;
   source: string;
+  scope: Scope;
   dryRun: boolean;
   runner: CommandRunner;
   skillCount?: number;
@@ -158,11 +159,18 @@ async function installSkillsFallback(opts: {
   const successDetail = dirInfo.exact
     ? `${count} skills copied to ${dirInfo.dir} from ${githubRepoUrl(source.normalized)} via:`
     : `${count} skills copied to approximately ${dirInfo.dir} from ${githubRepoUrl(source.normalized)} via:`;
-  if (opts.dryRun) return planned(opts.agent.name, 'install', 'skills', 'user', commands, plannedDetail);
+  const plannedMessage = skillsFallbackScopeMessage(opts.scope, plannedDetail);
+  const successMessage = skillsFallbackScopeMessage(opts.scope, successDetail);
+  if (opts.dryRun) return planned(opts.agent.name, 'install', 'skills', 'user', commands, plannedMessage);
 
   const result = await opts.runner.run('npx', args);
   if (result.code !== 0) return failed(opts.agent.name, 'install', 'skills', 'user', commands, result);
-  return success(opts.agent.name, 'install', 'skills', 'user', commands, successDetail);
+  return success(opts.agent.name, 'install', 'skills', 'user', commands, successMessage);
+}
+
+function skillsFallbackScopeMessage(requestedScope: Scope, detail: string): string {
+  if (requestedScope !== 'project') return detail;
+  return `Warning: project scope was requested, but skills fallback installs are always user/global scope.\n${detail}`;
 }
 
 async function updateSkillsFallback(opts: {

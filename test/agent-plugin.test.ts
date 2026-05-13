@@ -154,6 +154,9 @@ describe('agent-plugin', () => {
 
     expect(result.method).toBe('skills');
     expect(result.scope).toBe('user');
+    expect(result.message).toContain(
+      'Warning: project scope was requested, but skills fallback installs are always user/global scope.\n',
+    );
     expect(result.message).toContain('7 skills will be copied to');
     expect(result.message).toContain('from https://github.com/Codagent-AI/agent-skills.git');
     expect(result.message).toContain('via:');
@@ -175,6 +178,9 @@ describe('agent-plugin', () => {
     });
 
     expect(result.status).toBe('success');
+    expect(result.message).toContain(
+      'Warning: project scope was requested, but skills fallback installs are always user/global scope.\n',
+    );
     expect(result.message).toContain('7 skills copied to');
     expect(result.message).toContain('from https://github.com/Codagent-AI/agent-skills.git via:');
   });
