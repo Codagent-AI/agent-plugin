@@ -29,6 +29,12 @@ jobs:
       - name: Build for npm
         run: npm run build
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
       - name: Check if version is already published
         id: check
         run: |

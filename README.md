@@ -51,7 +51,7 @@ directory when known.
 
 ## Release
 
-Releases use Changesets. Run `npm run changeset` for user-facing changes, then
-use `.claude/commands/release.md` to create a release PR. Merging that PR to
-`main` publishes `@codagent-ai/agent-plugin` to npm through the `Release`
-workflow.
+Releases use Changesets, but contributors do not need to create changesets on
+normal PRs. The `.claude/commands/release.md` flow auto-generates changesets
+from merged PRs, creates the release PR, and publishing happens when that
+release PR merges to `main`.
