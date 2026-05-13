@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { Command, Option } from 'commander';
 import { installForAgent, listForAgent, updateForAgent } from './adapters.js';
 import { resolveTargetAgents, uniqueAgents } from './agents.js';
@@ -6,6 +7,9 @@ import { SubprocessRunner } from './runner.js';
 import { inspectGithubSource } from './skills-discovery.js';
 import { parseGithubSource } from './source.js';
 import type { AgentResult, CommandRunner } from './types.js';
+
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json') as { version: string };
 
 interface CommonOptions {
   agent?: string[];
@@ -22,7 +26,7 @@ export async function runCli(argv: string[], runner: CommandRunner = new Subproc
   program
     .name('agent-plugin')
     .description('Install agent plugins through native CLIs with skills fallback')
-    .version('0.1.0')
+    .version(packageJson.version)
     .exitOverride();
 
   const agentOption = new Option('-a, --agent <agents...>', 'target agents');
@@ -134,9 +138,9 @@ export async function runCli(argv: string[], runner: CommandRunner = new Subproc
   try {
     await program.parseAsync(argv, { from: 'user' });
   } catch (error) {
-    const err = error as { exitCode?: number; message?: string };
+    const err = error as { code?: string; exitCode?: number; message?: string };
     exitCode = err.exitCode ?? 1;
-    if (err.message) console.error(err.message);
+    if (!err.code?.startsWith('commander.') && err.message) console.error(err.message);
   }
 
   return exitCode;

@@ -1,8 +1,12 @@
+import { createRequire } from 'node:module';
 import { describe, expect, it, vi } from 'vitest';
 import { installForAgent, updateForAgent } from '../src/adapters.js';
 import { normalizeAgent, resolveTargetAgents } from '../src/agents.js';
 import { runCli } from '../src/cli.js';
 import type { CommandRunner, RunResult } from '../src/types.js';
+
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json') as { version: string };
 
 class MockRunner implements CommandRunner {
   calls: Array<{ command: string; args: string[] }> = [];
@@ -23,6 +27,23 @@ class MockRunner implements CommandRunner {
 }
 
 describe('agent-plugin', () => {
+  it('prints version once', async () => {
+    const runner = new MockRunner();
+    const stdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+    const code = await runCli(['--version'], runner);
+
+    const stdoutText = stdout.mock.calls.map((call) => String(call[0])).join('');
+    const stderrText = stderr.mock.calls.map((call) => String(call[0])).join('');
+    stdout.mockRestore();
+    stderr.mockRestore();
+
+    expect(code).toBe(0);
+    expect(stdoutText).toBe(`${packageJson.version}\n`);
+    expect(stderrText).toBe('');
+  });
+
   it('builds Claude dry-run commands with user scope by default', async () => {
     const runner = new MockRunner();
     const result = await installForAgent({

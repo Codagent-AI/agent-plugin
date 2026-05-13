@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { Command, Option } from 'commander';
 import { installForAgent, listForAgent, updateForAgent } from './adapters.js';
 import { resolveTargetAgents, uniqueAgents } from './agents.js';
@@ -5,13 +6,15 @@ import { printAggregate, summarizeOk } from './output.js';
 import { SubprocessRunner } from './runner.js';
 import { inspectGithubSource } from './skills-discovery.js';
 import { parseGithubSource } from './source.js';
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json');
 export async function runCli(argv, runner = new SubprocessRunner()) {
     const program = new Command();
     let exitCode = 0;
     program
         .name('agent-plugin')
         .description('Install agent plugins through native CLIs with skills fallback')
-        .version('0.1.0')
+        .version(packageJson.version)
         .exitOverride();
     const agentOption = new Option('-a, --agent <agents...>', 'target agents');
     const addCommand = async (source, options) => {
@@ -119,7 +122,7 @@ export async function runCli(argv, runner = new SubprocessRunner()) {
     catch (error) {
         const err = error;
         exitCode = err.exitCode ?? 1;
-        if (err.message)
+        if (!err.code?.startsWith('commander.') && err.message)
             console.error(err.message);
     }
     return exitCode;
