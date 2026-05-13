@@ -197,11 +197,17 @@ function resolveClaudeInstalledPlugin(stdout, plugin) {
     try {
         const parsed = JSON.parse(stdout);
         const entries = Array.isArray(parsed) ? parsed : (parsed.plugins ?? []);
-        const names = entries.flatMap((entry) => {
-            const e = entry;
-            return [e.id, e.name].filter((value) => typeof value === 'string' && value.length > 0);
-        });
-        return names.find((name) => name === plugin) ?? names.find((name) => name.startsWith(`${plugin}@`));
+        const normalized = entries.map((entry) => entry);
+        const ids = normalized
+            .map((entry) => entry.id)
+            .filter((value) => typeof value === 'string' && value.length > 0);
+        const names = normalized
+            .map((entry) => entry.name)
+            .filter((value) => typeof value === 'string' && value.length > 0);
+        return (ids.find((id) => id === plugin) ??
+            ids.find((id) => id.startsWith(`${plugin}@`)) ??
+            names.find((name) => name === plugin) ??
+            names.find((name) => name.startsWith(`${plugin}@`)));
     }
     catch {
         return undefined;

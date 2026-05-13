@@ -99,6 +99,7 @@ describe('agent-plugin', () => {
       stdout: JSON.stringify([
         {
           id: 'agent-validator@agent-validator',
+          name: 'agent-validator',
           scope: 'user',
         },
       ]),
