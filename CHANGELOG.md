@@ -1,5 +1,13 @@
 # @codagent-ai/agent-plugin
 
+## 0.1.2
+
+- Included source GitHub URLs in Claude, Copilot, and fallback skills install
+  output.
+- Resolved Claude updates against installed plugin IDs such as
+  `agent-validator@agent-validator`.
+- Clarified fallback skills dry-run and success messages.
+
 ## 0.1.1
 
 - Fixed CLI help and version output so Commander control-flow messages are not
