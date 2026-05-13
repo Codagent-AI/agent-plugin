@@ -1,14 +1,23 @@
 {
-  "name": "agent-plugin",
+  "name": "@codagent-ai/agent-plugin",
   "version": "0.1.0",
   "description": "Install agent plugins through native CLIs with skills fallback",
   "type": "module",
+  "homepage": "https://github.com/Codagent-AI/agent-plugin#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Codagent-AI/agent-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Codagent-AI/agent-plugin/issues"
+  },
   "bin": {
     "agent-plugin": "dist/index.js"
   },
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
@@ -16,7 +25,10 @@
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish"
   },
   "keywords": [
     "agent",
@@ -27,6 +39,9 @@
     "codex"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -36,6 +51,8 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.0",
     "@types/node": "^24.10.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
