@@ -141,8 +141,35 @@ describe('agent-plugin', () => {
     expect(result.commands).toEqual(['copilot plugin install Codagent-AI/agent-skills']);
   });
 
-  it('falls Codex through to npx skills at global scope', async () => {
+  it('uses generic native plugin add when an agent exposes plugin add help', async () => {
     const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 0 });
+
+    const result = await installForAgent({
+      agent: normalizeAgent('codex'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: true,
+      runner,
+      skillCount: 7,
+      pluginName: 'codagent',
+      marketplaceName: 'codagent',
+    });
+
+    expect(result.method).toBe('native');
+    expect(result.scope).toBe('user');
+    expect(result.message).toContain('project scope is unsupported');
+    expect(result.commands).toEqual([
+      'codex plugin marketplace add Codagent-AI/agent-skills',
+      'codex plugin add codagent --marketplace codagent',
+    ]);
+    expect(runner.calls).toContainEqual({ command: 'codex', args: ['plugin', 'add', '--help'] });
+  });
+
+  it('falls Codex through to npx skills when plugin add is unavailable', async () => {
+    const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 1, stderr: 'unrecognized subcommand' });
+
     const result = await installForAgent({
       agent: normalizeAgent('codex'),
       source: 'Codagent-AI/agent-skills',
@@ -168,6 +195,8 @@ describe('agent-plugin', () => {
 
   it('uses past tense for completed fallback skills installs', async () => {
     const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 1, stderr: 'unrecognized subcommand' });
+
     const result = await installForAgent({
       agent: normalizeAgent('codex'),
       source: 'Codagent-AI/agent-skills',

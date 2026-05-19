@@ -6,6 +6,8 @@ import type { CommandRunner } from './types.js';
 export interface SourceInspection {
   skillCount: number;
   claudePluginName?: string;
+  codexPluginName?: string;
+  marketplaceName?: string;
 }
 
 export async function inspectGithubSource(
@@ -20,6 +22,8 @@ export async function inspectGithubSource(
     return {
       skillCount: await countSkillFiles(tmp),
       claudePluginName: await readClaudePluginName(tmp),
+      codexPluginName: await readCodexPluginName(tmp),
+      marketplaceName: await readMarketplaceName(tmp),
     };
   } finally {
     await rm(tmp, { recursive: true, force: true });
@@ -62,6 +66,26 @@ async function hasVercelSkillMetadata(file: string): Promise<boolean> {
 async function readClaudePluginName(repoRoot: string): Promise<string | undefined> {
   try {
     const content = await readFile(path.join(repoRoot, '.claude-plugin', 'plugin.json'), 'utf8');
+    const parsed = JSON.parse(content) as { name?: unknown };
+    return typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function readCodexPluginName(repoRoot: string): Promise<string | undefined> {
+  try {
+    const content = await readFile(path.join(repoRoot, '.codex-plugin', 'plugin.json'), 'utf8');
+    const parsed = JSON.parse(content) as { name?: unknown };
+    return typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function readMarketplaceName(repoRoot: string): Promise<string | undefined> {
+  try {
+    const content = await readFile(path.join(repoRoot, '.claude-plugin', 'marketplace.json'), 'utf8');
     const parsed = JSON.parse(content) as { name?: unknown };
     return typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : undefined;
   } catch {

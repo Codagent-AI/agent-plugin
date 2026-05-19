@@ -7,6 +7,8 @@ export async function installForAgent(opts) {
         return installClaude(opts);
     if (opts.agent.native === 'copilot')
         return installCopilot(opts);
+    if (await supportsGenericPluginAdd(opts.agent.name, opts.runner))
+        return installGenericPluginAdd(opts);
     return installSkillsFallback(opts);
 }
 export async function updateForAgent(opts) {
@@ -73,6 +75,31 @@ async function installCopilot(opts) {
     if (result.code !== 0)
         return failed(opts.agent.name, 'install', 'native', scope, commands, result);
     return success(opts.agent.name, 'install', 'native', scope, commands, message);
+}
+async function installGenericPluginAdd(opts) {
+    const source = parseGithubSource(opts.source);
+    const plugin = opts.pluginName ?? source.pluginName;
+    const marketplace = opts.marketplaceName ?? source.pluginName;
+    const args1 = ['plugin', 'marketplace', 'add', source.normalized];
+    const args2 = ['plugin', 'add', plugin, '--marketplace', marketplace];
+    const commands = [formatCommand(opts.agent.name, args1), formatCommand(opts.agent.name, args2)];
+    const scope = 'user';
+    const scopeNote = opts.scope === 'project' ? `${displayAgent(opts.agent.name)} project scope is unsupported; using user scope.` : undefined;
+    const installMessage = `${displayAgent(opts.agent.name)} plugin ${opts.dryRun ? 'will be installed' : 'installed'} from ${githubRepoUrl(source.normalized)} via:`;
+    const message = scopeNote ? `${scopeNote} ${installMessage}` : installMessage;
+    if (opts.dryRun)
+        return planned(opts.agent.name, 'install', 'native', scope, commands, message);
+    const addMarketplace = await opts.runner.run(opts.agent.name, args1);
+    if (addMarketplace.code !== 0)
+        return failed(opts.agent.name, 'install', 'native', scope, commands, addMarketplace);
+    const addPlugin = await opts.runner.run(opts.agent.name, args2);
+    if (addPlugin.code !== 0)
+        return failed(opts.agent.name, 'install', 'native', scope, commands, addPlugin);
+    return success(opts.agent.name, 'install', 'native', scope, commands, message);
+}
+async function supportsGenericPluginAdd(agentName, runner) {
+    const result = await runner.run(agentName, ['plugin', 'add', '--help']);
+    return result.code === 0;
 }
 async function updateCopilot(opts) {
     const plugin = pluginName(opts.plugin);
@@ -196,6 +223,9 @@ function pluginName(value) {
     catch {
         return value;
     }
+}
+function displayAgent(agentName) {
+    return agentName.charAt(0).toUpperCase() + agentName.slice(1);
 }
 function githubRepoUrl(normalizedSource) {
     return `https://github.com/${normalizedSource}.git`;
