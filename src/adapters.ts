@@ -51,7 +51,7 @@ async function installClaude(opts: {
 }): Promise<AgentResult> {
   const source = parseGithubSource(opts.source);
   const pluginName = opts.pluginName ?? source.pluginName;
-  const args1 = ['plugin', 'marketplace', 'add', source.normalized];
+  const args1 = ['plugin', 'marketplace', 'add', source.normalized, '--scope', opts.scope];
   const args2 = ['plugin', 'install', pluginName, '--scope', opts.scope];
   const commands = [formatCommand('claude', args1), formatCommand('claude', args2)];
   if (opts.dryRun) {

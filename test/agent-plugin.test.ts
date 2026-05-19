@@ -57,7 +57,7 @@ describe('agent-plugin', () => {
     expect(result.status).toBe('planned');
     expect(result.message).toBe('Claude plugin will be installed from https://github.com/Codagent-AI/agent-skills.git via:');
     expect(result.commands).toEqual([
-      'claude plugin marketplace add Codagent-AI/agent-skills',
+      'claude plugin marketplace add Codagent-AI/agent-skills --scope user',
       'claude plugin install agent-skills --scope user',
     ]);
   });
@@ -74,8 +74,26 @@ describe('agent-plugin', () => {
     });
 
     expect(result.commands).toEqual([
-      'claude plugin marketplace add Codagent-AI/agent-skills',
+      'claude plugin marketplace add Codagent-AI/agent-skills --scope user',
       'claude plugin install codagent --scope user',
+    ]);
+  });
+
+  it('passes project scope to both Claude marketplace and plugin install commands', async () => {
+    const runner = new MockRunner();
+    const result = await installForAgent({
+      agent: normalizeAgent('claude'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: true,
+      runner,
+      pluginName: 'codagent',
+    });
+
+    expect(result.scope).toBe('project');
+    expect(result.commands).toEqual([
+      'claude plugin marketplace add Codagent-AI/agent-skills --scope project',
+      'claude plugin install codagent --scope project',
     ]);
   });
 
@@ -216,7 +234,7 @@ describe('agent-plugin', () => {
 
   it('continues after partial failure and returns non-zero aggregate', async () => {
     const runner = new MockRunner();
-    runner.set('claude', ['plugin', 'marketplace', 'add', 'Codagent-AI/agent-skills'], {
+    runner.set('claude', ['plugin', 'marketplace', 'add', 'Codagent-AI/agent-skills', '--scope', 'user'], {
       code: 1,
       stderr: 'claude failed',
     });
