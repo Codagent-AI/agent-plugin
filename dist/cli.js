@@ -129,6 +129,8 @@ export async function runCli(argv, runner = new SubprocessRunner()) {
     return exitCode;
 }
 function needsSourceInspection(dryRun, agents) {
+    if (!dryRun)
+        return true;
     return agents.some((agent) => agent.native === 'claude') || agents.some((agent) => !agent.native);
 }
 function pluginNameForAgent(agent, sourceInspection) {

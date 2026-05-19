@@ -6,6 +6,7 @@
   native plugin install commands when available.
 - Keep Vercel `skills` as the fallback for CLIs without native plugin add
   support.
+- Fall back to Vercel `skills` when native plugin install commands fail.
 
 ## 0.1.3
 

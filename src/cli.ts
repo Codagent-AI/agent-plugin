@@ -151,6 +151,7 @@ function needsSourceInspection(
   dryRun: boolean,
   agents: Array<{ native?: string }>,
 ): boolean {
+  if (!dryRun) return true;
   return agents.some((agent) => agent.native === 'claude') || agents.some((agent) => !agent.native);
 }
 

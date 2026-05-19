@@ -58,6 +58,9 @@ Dry runs print the exact commands for native agents. For fallback agents, dry
 runs report how many skills would be copied and the target global skills
 directory when known.
 
+If a native plugin install command fails, `agent-plugin` falls back to the
+global/user-level `skills` copy path.
+
 ## Release
 
 Releases use Changesets, but contributors do not need to create changesets on
