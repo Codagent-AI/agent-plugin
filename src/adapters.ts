@@ -12,9 +12,11 @@ export async function installForAgent(opts: {
   runner: CommandRunner;
   skillCount?: number;
   pluginName?: string;
+  marketplaceName?: string;
 }): Promise<AgentResult> {
   if (opts.agent.native === 'claude') return installClaude(opts);
   if (opts.agent.native === 'copilot') return installCopilot(opts);
+  if (await supportsGenericPluginAdd(opts.agent.name, opts.runner)) return installGenericPluginAdd(opts);
   return installSkillsFallback(opts);
 }
 
@@ -49,7 +51,7 @@ async function installClaude(opts: {
 }): Promise<AgentResult> {
   const source = parseGithubSource(opts.source);
   const pluginName = opts.pluginName ?? source.pluginName;
-  const args1 = ['plugin', 'marketplace', 'add', source.normalized];
+  const args1 = ['plugin', 'marketplace', 'add', source.normalized, '--scope', opts.scope];
   const args2 = ['plugin', 'install', pluginName, '--scope', opts.scope];
   const commands = [formatCommand('claude', args1), formatCommand('claude', args2)];
   if (opts.dryRun) {
@@ -64,9 +66,9 @@ async function installClaude(opts: {
   }
 
   const add = await opts.runner.run('claude', args1);
-  if (add.code !== 0) return failed(opts.agent.name, 'install', 'native', opts.scope, commands, add);
+  if (add.code !== 0) return installSkillsFallbackAfterPluginFailure(opts, commands, add);
   const install = await opts.runner.run('claude', args2);
-  if (install.code !== 0) return failed(opts.agent.name, 'install', 'native', opts.scope, commands, install);
+  if (install.code !== 0) return installSkillsFallbackAfterPluginFailure(opts, commands, install);
   return success(
     opts.agent.name,
     'install',
@@ -118,8 +120,55 @@ async function installCopilot(opts: {
   if (opts.dryRun) return planned(opts.agent.name, 'install', 'native', scope, commands, message);
 
   const result = await opts.runner.run('copilot', args);
-  if (result.code !== 0) return failed(opts.agent.name, 'install', 'native', scope, commands, result);
+  if (result.code !== 0) return installSkillsFallbackAfterPluginFailure(opts, commands, result);
   return success(opts.agent.name, 'install', 'native', scope, commands, message);
+}
+
+async function installGenericPluginAdd(opts: {
+  agent: NormalizedAgent;
+  source: string;
+  scope: Scope;
+  dryRun: boolean;
+  runner: CommandRunner;
+  pluginName?: string;
+  marketplaceName?: string;
+}): Promise<AgentResult> {
+  const source = parseGithubSource(opts.source);
+  const plugin = opts.pluginName ?? source.pluginName;
+  const marketplace = opts.marketplaceName ?? source.pluginName;
+  const args1 = ['plugin', 'marketplace', 'add', source.normalized];
+  const args2 = ['plugin', 'add', `${plugin}@${marketplace}`];
+  const commands = [formatCommand(opts.agent.name, args1), formatCommand(opts.agent.name, args2)];
+  const scope: Scope = 'user';
+  const scopeNote = opts.scope === 'project' ? `${displayAgent(opts.agent.name)} project scope is unsupported; using user scope.` : undefined;
+  const installMessage = `${displayAgent(opts.agent.name)} plugin ${opts.dryRun ? 'will be installed' : 'installed'} from ${githubRepoUrl(source.normalized)} via:`;
+  const message = scopeNote ? `${scopeNote} ${installMessage}` : installMessage;
+  if (opts.dryRun) return planned(opts.agent.name, 'install', 'native', scope, commands, message);
+
+  const addMarketplace = await opts.runner.run(opts.agent.name, args1);
+  if (addMarketplace.code !== 0) return installSkillsFallbackAfterPluginFailure(opts, commands, addMarketplace);
+  const addPlugin = await opts.runner.run(opts.agent.name, args2);
+  if (addPlugin.code !== 0) return installSkillsFallbackAfterPluginFailure(opts, commands, addPlugin);
+  return success(opts.agent.name, 'install', 'native', scope, commands, message);
+}
+
+async function supportsGenericPluginAdd(agentName: string, runner: CommandRunner): Promise<boolean> {
+  return (
+    (await supportsPluginHelp(agentName, ['plugin', 'add', '--help'], runner, 'plugin add')) &&
+    (await supportsPluginHelp(agentName, ['plugin', 'marketplace', 'add', '--help'], runner, 'plugin marketplace add'))
+  );
+}
+
+async function supportsPluginHelp(
+  agentName: string,
+  args: string[],
+  runner: CommandRunner,
+  expectedUsage: string,
+): Promise<boolean> {
+  const result = await runner.run(agentName, args);
+  if (result.code !== 0) return false;
+  const output = `${result.stdout}\n${result.stderr}`.trim().toLowerCase();
+  return output.length === 0 || output.includes(expectedUsage);
 }
 
 async function updateCopilot(opts: {
@@ -166,6 +215,36 @@ async function installSkillsFallback(opts: {
   const result = await opts.runner.run('npx', args);
   if (result.code !== 0) return failed(opts.agent.name, 'install', 'skills', 'user', commands, result);
   return success(opts.agent.name, 'install', 'skills', 'user', commands, successMessage);
+}
+
+async function installSkillsFallbackAfterPluginFailure(
+  opts: {
+    agent: NormalizedAgent;
+    source: string;
+    scope: Scope;
+    dryRun: boolean;
+    runner: CommandRunner;
+    skillCount?: number;
+  },
+  nativeCommands: string[],
+  nativeResult: { stdout: string; stderr: string; code: number },
+): Promise<AgentResult> {
+  const fallback = await installSkillsFallback(opts);
+  const commands = [...nativeCommands, ...fallback.commands];
+  const nativeError = resultOutput(nativeResult) || `Command exited with code ${nativeResult.code}`;
+  const prefix = `Native plugin install failed; falling back to skills copy.`;
+  if (fallback.status === 'failed') {
+    return {
+      ...fallback,
+      commands,
+      error: `Native plugin install failed: ${nativeError}\nSkills fallback failed: ${fallback.error ?? fallback.status}`,
+    };
+  }
+  return {
+    ...fallback,
+    commands,
+    message: `${prefix}\n${fallback.message ?? ''}`,
+  };
 }
 
 function skillsFallbackScopeMessage(requestedScope: Scope, detail: string): string {
@@ -260,6 +339,10 @@ function pluginName(value: string | undefined): string {
   }
 }
 
+function displayAgent(agentName: string): string {
+  return agentName.charAt(0).toUpperCase() + agentName.slice(1);
+}
+
 function githubRepoUrl(normalizedSource: string): string {
   return `https://github.com/${normalizedSource}.git`;
 }
@@ -316,7 +399,7 @@ function failed(
   commands: string[],
   result: { stdout: string; stderr: string; code: number },
 ): AgentResult {
-  const output = [result.stderr.trim(), result.stdout.trim()].filter(Boolean).join('\n');
+  const output = resultOutput(result);
   return {
     agent,
     action,
@@ -326,4 +409,8 @@ function failed(
     commands,
     error: output || `Command exited with code ${result.code}`,
   };
+}
+
+function resultOutput(result: { stdout: string; stderr: string }): string {
+  return [result.stderr.trim(), result.stdout.trim()].filter(Boolean).join('\n');
 }

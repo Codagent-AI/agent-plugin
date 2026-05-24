@@ -11,6 +11,8 @@ export async function inspectGithubSource(source, runner) {
         return {
             skillCount: await countSkillFiles(tmp),
             claudePluginName: await readClaudePluginName(tmp),
+            codexPluginName: await readCodexPluginName(tmp),
+            marketplaceName: await readMarketplaceName(tmp),
         };
     }
     finally {
@@ -56,6 +58,26 @@ async function hasVercelSkillMetadata(file) {
 async function readClaudePluginName(repoRoot) {
     try {
         const content = await readFile(path.join(repoRoot, '.claude-plugin', 'plugin.json'), 'utf8');
+        const parsed = JSON.parse(content);
+        return typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : undefined;
+    }
+    catch {
+        return undefined;
+    }
+}
+async function readCodexPluginName(repoRoot) {
+    try {
+        const content = await readFile(path.join(repoRoot, '.codex-plugin', 'plugin.json'), 'utf8');
+        const parsed = JSON.parse(content);
+        return typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : undefined;
+    }
+    catch {
+        return undefined;
+    }
+}
+async function readMarketplaceName(repoRoot) {
+    try {
+        const content = await readFile(path.join(repoRoot, '.claude-plugin', 'marketplace.json'), 'utf8');
         const parsed = JSON.parse(content);
         return typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : undefined;
     }

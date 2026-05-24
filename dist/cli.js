@@ -37,7 +37,8 @@ export async function runCli(argv, runner = new SubprocessRunner()) {
                     dryRun: options.dryRun ?? false,
                     runner,
                     skillCount: sourceInspection?.skillCount,
-                    pluginName: sourceInspection?.claudePluginName,
+                    pluginName: pluginNameForAgent(agent, sourceInspection),
+                    marketplaceName: sourceInspection?.marketplaceName,
                 }));
             }
             const aggregate = summarizeOk(results);
@@ -128,7 +129,14 @@ export async function runCli(argv, runner = new SubprocessRunner()) {
     return exitCode;
 }
 function needsSourceInspection(dryRun, agents) {
-    return agents.some((agent) => agent.native === 'claude') || (dryRun && agents.some((agent) => !agent.native));
+    if (!dryRun)
+        return true;
+    return agents.some((agent) => agent.native === 'claude') || agents.some((agent) => !agent.native);
+}
+function pluginNameForAgent(agent, sourceInspection) {
+    if (agent.native === 'claude')
+        return sourceInspection?.claudePluginName;
+    return sourceInspection?.codexPluginName;
 }
 function printError(error, json) {
     const message = error instanceof Error ? error.message : String(error);

@@ -57,7 +57,7 @@ describe('agent-plugin', () => {
     expect(result.status).toBe('planned');
     expect(result.message).toBe('Claude plugin will be installed from https://github.com/Codagent-AI/agent-skills.git via:');
     expect(result.commands).toEqual([
-      'claude plugin marketplace add Codagent-AI/agent-skills',
+      'claude plugin marketplace add Codagent-AI/agent-skills --scope user',
       'claude plugin install agent-skills --scope user',
     ]);
   });
@@ -74,8 +74,26 @@ describe('agent-plugin', () => {
     });
 
     expect(result.commands).toEqual([
-      'claude plugin marketplace add Codagent-AI/agent-skills',
+      'claude plugin marketplace add Codagent-AI/agent-skills --scope user',
       'claude plugin install codagent --scope user',
+    ]);
+  });
+
+  it('passes project scope to both Claude marketplace and plugin install commands', async () => {
+    const runner = new MockRunner();
+    const result = await installForAgent({
+      agent: normalizeAgent('claude'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: true,
+      runner,
+      pluginName: 'codagent',
+    });
+
+    expect(result.scope).toBe('project');
+    expect(result.commands).toEqual([
+      'claude plugin marketplace add Codagent-AI/agent-skills --scope project',
+      'claude plugin install codagent --scope project',
     ]);
   });
 
@@ -91,6 +109,35 @@ describe('agent-plugin', () => {
 
     expect(result.status).toBe('success');
     expect(result.message).toBe('Claude plugin installed from https://github.com/Codagent-AI/agent-skills.git via:');
+  });
+
+  it('falls back to skills when Claude native plugin install fails', async () => {
+    const runner = new MockRunner();
+    runner.set('claude', ['plugin', 'marketplace', 'add', 'Codagent-AI/agent-skills', '--scope', 'project'], {
+      code: 1,
+      stderr: 'unknown option --scope',
+    });
+
+    const result = await installForAgent({
+      agent: normalizeAgent('claude'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: false,
+      runner,
+      skillCount: 7,
+      pluginName: 'codagent',
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.method).toBe('skills');
+    expect(result.scope).toBe('user');
+    expect(result.message).toContain('Native plugin install failed; falling back to skills copy.');
+    expect(result.message).toContain('Warning: project scope was requested');
+    expect(result.commands).toEqual([
+      'claude plugin marketplace add Codagent-AI/agent-skills --scope project',
+      'claude plugin install codagent --scope project',
+      "npx --yes skills add Codagent-AI/agent-skills --global --yes --skill '*' --agent claude-code",
+    ]);
   });
 
   it('updates Claude using the installed plugin id when it includes a source suffix', async () => {
@@ -141,8 +188,120 @@ describe('agent-plugin', () => {
     expect(result.commands).toEqual(['copilot plugin install Codagent-AI/agent-skills']);
   });
 
-  it('falls Codex through to npx skills at global scope', async () => {
+  it('falls back to skills when Copilot native plugin install fails', async () => {
     const runner = new MockRunner();
+    runner.set('copilot', ['plugin', 'install', 'Codagent-AI/agent-skills'], {
+      code: 1,
+      stderr: 'plugin install unavailable',
+    });
+
+    const result = await installForAgent({
+      agent: normalizeAgent('copilot'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: false,
+      runner,
+      skillCount: 7,
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.method).toBe('skills');
+    expect(result.message).toContain('Native plugin install failed; falling back to skills copy.');
+    expect(result.commands).toEqual([
+      'copilot plugin install Codagent-AI/agent-skills',
+      "npx --yes skills add Codagent-AI/agent-skills --global --yes --skill '*' --agent github-copilot",
+    ]);
+  });
+
+  it('uses native Codex plugin add when Codex exposes plugin add help', async () => {
+    const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 0, stdout: 'Usage: codex plugin add <PLUGIN[@MARKETPLACE]>' });
+    runner.set('codex', ['plugin', 'marketplace', 'add', '--help'], {
+      code: 0,
+      stdout: 'Usage: codex plugin marketplace add <SOURCE>',
+    });
+
+    const result = await installForAgent({
+      agent: normalizeAgent('codex'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: true,
+      runner,
+      skillCount: 7,
+      pluginName: 'codagent',
+      marketplaceName: 'codagent',
+    });
+
+    expect(result.method).toBe('native');
+    expect(result.scope).toBe('user');
+    expect(result.message).toContain('project scope is unsupported');
+    expect(result.commands).toEqual([
+      'codex plugin marketplace add Codagent-AI/agent-skills',
+      'codex plugin add codagent@codagent',
+    ]);
+    expect(runner.calls).toContainEqual({ command: 'codex', args: ['plugin', 'add', '--help'] });
+    expect(runner.calls).toContainEqual({ command: 'codex', args: ['plugin', 'marketplace', 'add', '--help'] });
+  });
+
+  it('falls back to skills when marketplace add help is unavailable', async () => {
+    const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 0, stdout: 'Usage: codex plugin add <PLUGIN[@MARKETPLACE]>' });
+    runner.set('codex', ['plugin', 'marketplace', 'add', '--help'], {
+      code: 1,
+      stderr: 'unrecognized subcommand',
+    });
+
+    const result = await installForAgent({
+      agent: normalizeAgent('codex'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: true,
+      runner,
+      skillCount: 7,
+      pluginName: 'codagent',
+      marketplaceName: 'codagent',
+    });
+
+    expect(result.method).toBe('skills');
+    expect(result.commands).toEqual([
+      "npx --yes skills add Codagent-AI/agent-skills --global --yes --skill '*' --agent codex",
+    ]);
+  });
+
+  it('falls back to skills when generic native plugin add fails', async () => {
+    const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 0 });
+    runner.set('codex', ['plugin', 'marketplace', 'add', '--help'], { code: 0 });
+    runner.set('codex', ['plugin', 'add', 'codagent@codagent'], {
+      code: 1,
+      stderr: 'plugin add failed',
+    });
+
+    const result = await installForAgent({
+      agent: normalizeAgent('codex'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: false,
+      runner,
+      skillCount: 7,
+      pluginName: 'codagent',
+      marketplaceName: 'codagent',
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.method).toBe('skills');
+    expect(result.message).toContain('Native plugin install failed; falling back to skills copy.');
+    expect(result.commands).toEqual([
+      'codex plugin marketplace add Codagent-AI/agent-skills',
+      'codex plugin add codagent@codagent',
+      "npx --yes skills add Codagent-AI/agent-skills --global --yes --skill '*' --agent codex",
+    ]);
+  });
+
+  it('falls Codex through to npx skills when plugin add is unavailable', async () => {
+    const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 1, stderr: 'unrecognized subcommand' });
+
     const result = await installForAgent({
       agent: normalizeAgent('codex'),
       source: 'Codagent-AI/agent-skills',
@@ -168,6 +327,8 @@ describe('agent-plugin', () => {
 
   it('uses past tense for completed fallback skills installs', async () => {
     const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 1, stderr: 'unrecognized subcommand' });
+
     const result = await installForAgent({
       agent: normalizeAgent('codex'),
       source: 'Codagent-AI/agent-skills',
@@ -187,10 +348,18 @@ describe('agent-plugin', () => {
 
   it('continues after partial failure and returns non-zero aggregate', async () => {
     const runner = new MockRunner();
-    runner.set('claude', ['plugin', 'marketplace', 'add', 'Codagent-AI/agent-skills'], {
+    runner.set('claude', ['plugin', 'marketplace', 'add', 'Codagent-AI/agent-skills', '--scope', 'user'], {
       code: 1,
       stderr: 'claude failed',
     });
+    runner.set(
+      'npx',
+      ['--yes', 'skills', 'add', 'Codagent-AI/agent-skills', '--global', '--yes', '--skill', '*', '--agent', 'claude-code'],
+      {
+        code: 1,
+        stderr: 'skills failed',
+      },
+    );
     const output = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 

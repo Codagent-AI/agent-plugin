@@ -52,7 +52,8 @@ export async function runCli(argv: string[], runner: CommandRunner = new Subproc
             dryRun: options.dryRun ?? false,
             runner,
             skillCount: sourceInspection?.skillCount,
-            pluginName: sourceInspection?.claudePluginName,
+            pluginName: pluginNameForAgent(agent, sourceInspection),
+            marketplaceName: sourceInspection?.marketplaceName,
           }),
         );
       }
@@ -150,7 +151,16 @@ function needsSourceInspection(
   dryRun: boolean,
   agents: Array<{ native?: string }>,
 ): boolean {
-  return agents.some((agent) => agent.native === 'claude') || (dryRun && agents.some((agent) => !agent.native));
+  if (!dryRun) return true;
+  return agents.some((agent) => agent.native === 'claude') || agents.some((agent) => !agent.native);
+}
+
+function pluginNameForAgent(
+  agent: { native?: string },
+  sourceInspection: { claudePluginName?: string; codexPluginName?: string } | undefined,
+): string | undefined {
+  if (agent.native === 'claude') return sourceInspection?.claudePluginName;
+  return sourceInspection?.codexPluginName;
 }
 
 function printError(error: unknown, json: boolean): void {

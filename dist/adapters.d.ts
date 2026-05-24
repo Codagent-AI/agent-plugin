@@ -8,6 +8,7 @@ export declare function installForAgent(opts: {
     runner: CommandRunner;
     skillCount?: number;
     pluginName?: string;
+    marketplaceName?: string;
 }): Promise<AgentResult>;
 export declare function updateForAgent(opts: {
     agent: NormalizedAgent;

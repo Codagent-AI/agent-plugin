@@ -37,7 +37,12 @@ CLIs where supported. Fallback installs are always global/user-level.
 
 - `claude`, `claude-code`: native Claude plugin CLI
 - `copilot`, `github-copilot`: native Copilot plugin CLI
-- all other agent names, including `codex`: Vercel `skills`
+- `codex`: probe `codex plugin add --help`; use native Codex
+  `plugin marketplace add` + `plugin add` when supported, otherwise Vercel
+  `skills`
+- all other agent names: probe `<cli> plugin add --help`; use native
+  `plugin marketplace add` + `plugin add` when supported, otherwise Vercel
+  `skills`
 
 Fallback install calls:
 
@@ -45,9 +50,19 @@ Fallback install calls:
 npx --yes skills add <source> --global --yes --skill '*' --agent <agent>
 ```
 
+Generic native plugin install calls:
+
+```bash
+<cli> plugin marketplace add <source>
+<cli> plugin add <plugin>@<marketplace>
+```
+
 Dry runs print the exact commands for native agents. For fallback agents, dry
 runs report how many skills would be copied and the target global skills
 directory when known.
+
+If a native plugin install command fails, `agent-plugin` falls back to the
+global/user-level `skills` copy path.
 
 ## Release
 
