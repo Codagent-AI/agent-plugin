@@ -137,7 +137,7 @@ async function installGenericPluginAdd(opts: {
   const plugin = opts.pluginName ?? source.pluginName;
   const marketplace = opts.marketplaceName ?? source.pluginName;
   const args1 = ['plugin', 'marketplace', 'add', source.normalized];
-  const args2 = ['plugin', 'add', plugin, '--marketplace', marketplace];
+  const args2 = ['plugin', 'add', `${plugin}@${marketplace}`];
   const commands = [formatCommand(opts.agent.name, args1), formatCommand(opts.agent.name, args2)];
   const scope: Scope = 'user';
   const scopeNote = opts.scope === 'project' ? `${displayAgent(opts.agent.name)} project scope is unsupported; using user scope.` : undefined;

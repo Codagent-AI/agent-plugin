@@ -2,6 +2,8 @@
 
 ## 0.1.4
 
+- Prefer the Codex CLI plugin selector form, `codex plugin add
+  <plugin>@<marketplace>`, when native plugin installation is available.
 - Probe non-native agent CLIs with `<cli> plugin add --help` and use generic
   native plugin install commands when available.
 - Keep Vercel `skills` as the fallback for CLIs without native plugin add

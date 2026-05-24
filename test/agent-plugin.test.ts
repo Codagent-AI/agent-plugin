@@ -213,7 +213,7 @@ describe('agent-plugin', () => {
     ]);
   });
 
-  it('uses generic native plugin add when an agent exposes plugin add help', async () => {
+  it('uses native Codex plugin add when Codex exposes plugin add help', async () => {
     const runner = new MockRunner();
     runner.set('codex', ['plugin', 'add', '--help'], { code: 0 });
 
@@ -233,7 +233,7 @@ describe('agent-plugin', () => {
     expect(result.message).toContain('project scope is unsupported');
     expect(result.commands).toEqual([
       'codex plugin marketplace add Codagent-AI/agent-skills',
-      'codex plugin add codagent --marketplace codagent',
+      'codex plugin add codagent@codagent',
     ]);
     expect(runner.calls).toContainEqual({ command: 'codex', args: ['plugin', 'add', '--help'] });
   });
@@ -241,7 +241,7 @@ describe('agent-plugin', () => {
   it('falls back to skills when generic native plugin add fails', async () => {
     const runner = new MockRunner();
     runner.set('codex', ['plugin', 'add', '--help'], { code: 0 });
-    runner.set('codex', ['plugin', 'add', 'codagent', '--marketplace', 'codagent'], {
+    runner.set('codex', ['plugin', 'add', 'codagent@codagent'], {
       code: 1,
       stderr: 'plugin add failed',
     });
@@ -262,7 +262,7 @@ describe('agent-plugin', () => {
     expect(result.message).toContain('Native plugin install failed; falling back to skills copy.');
     expect(result.commands).toEqual([
       'codex plugin marketplace add Codagent-AI/agent-skills',
-      'codex plugin add codagent --marketplace codagent',
+      'codex plugin add codagent@codagent',
       "npx --yes skills add Codagent-AI/agent-skills --global --yes --skill '*' --agent codex",
     ]);
   });
