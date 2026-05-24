@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Agent Plugin"
+  short_description: "Release agent-plugin to npm and Homebrew"
+  default_prompt: "Use $release-agent-plugin to prepare the version bump, merge the PR, verify npm publication, update the Homebrew tap formula, and confirm everything is published."
