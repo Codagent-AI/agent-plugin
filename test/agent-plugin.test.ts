@@ -215,7 +215,11 @@ describe('agent-plugin', () => {
 
   it('uses native Codex plugin add when Codex exposes plugin add help', async () => {
     const runner = new MockRunner();
-    runner.set('codex', ['plugin', 'add', '--help'], { code: 0 });
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 0, stdout: 'Usage: codex plugin add <PLUGIN[@MARKETPLACE]>' });
+    runner.set('codex', ['plugin', 'marketplace', 'add', '--help'], {
+      code: 0,
+      stdout: 'Usage: codex plugin marketplace add <SOURCE>',
+    });
 
     const result = await installForAgent({
       agent: normalizeAgent('codex'),
@@ -236,11 +240,38 @@ describe('agent-plugin', () => {
       'codex plugin add codagent@codagent',
     ]);
     expect(runner.calls).toContainEqual({ command: 'codex', args: ['plugin', 'add', '--help'] });
+    expect(runner.calls).toContainEqual({ command: 'codex', args: ['plugin', 'marketplace', 'add', '--help'] });
+  });
+
+  it('falls back to skills when marketplace add help is unavailable', async () => {
+    const runner = new MockRunner();
+    runner.set('codex', ['plugin', 'add', '--help'], { code: 0, stdout: 'Usage: codex plugin add <PLUGIN[@MARKETPLACE]>' });
+    runner.set('codex', ['plugin', 'marketplace', 'add', '--help'], {
+      code: 1,
+      stderr: 'unrecognized subcommand',
+    });
+
+    const result = await installForAgent({
+      agent: normalizeAgent('codex'),
+      source: 'Codagent-AI/agent-skills',
+      scope: 'project',
+      dryRun: true,
+      runner,
+      skillCount: 7,
+      pluginName: 'codagent',
+      marketplaceName: 'codagent',
+    });
+
+    expect(result.method).toBe('skills');
+    expect(result.commands).toEqual([
+      "npx --yes skills add Codagent-AI/agent-skills --global --yes --skill '*' --agent codex",
+    ]);
   });
 
   it('falls back to skills when generic native plugin add fails', async () => {
     const runner = new MockRunner();
     runner.set('codex', ['plugin', 'add', '--help'], { code: 0 });
+    runner.set('codex', ['plugin', 'marketplace', 'add', '--help'], { code: 0 });
     runner.set('codex', ['plugin', 'add', 'codagent@codagent'], {
       code: 1,
       stderr: 'plugin add failed',

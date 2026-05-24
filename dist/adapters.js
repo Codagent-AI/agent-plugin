@@ -98,8 +98,15 @@ async function installGenericPluginAdd(opts) {
     return success(opts.agent.name, 'install', 'native', scope, commands, message);
 }
 async function supportsGenericPluginAdd(agentName, runner) {
-    const result = await runner.run(agentName, ['plugin', 'add', '--help']);
-    return result.code === 0;
+    return ((await supportsPluginHelp(agentName, ['plugin', 'add', '--help'], runner, 'plugin add')) &&
+        (await supportsPluginHelp(agentName, ['plugin', 'marketplace', 'add', '--help'], runner, 'plugin marketplace add')));
+}
+async function supportsPluginHelp(agentName, args, runner, expectedUsage) {
+    const result = await runner.run(agentName, args);
+    if (result.code !== 0)
+        return false;
+    const output = `${result.stdout}\n${result.stderr}`.trim().toLowerCase();
+    return output.length === 0 || output.includes(expectedUsage);
 }
 async function updateCopilot(opts) {
     const plugin = pluginName(opts.plugin);
