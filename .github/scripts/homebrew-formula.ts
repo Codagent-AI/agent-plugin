@@ -1,4 +1,6 @@
 import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 type FormulaInput = {
   version: string;
@@ -71,6 +73,10 @@ function requireEnv(name: string): string {
   return value;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export function isMainModule(importUrl: string, argvPath: string | undefined): boolean {
+  return argvPath != null && fileURLToPath(importUrl) === path.resolve(argvPath);
+}
+
+if (isMainModule(import.meta.url, process.argv[1])) {
   await main();
 }

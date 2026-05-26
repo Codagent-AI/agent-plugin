@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildHomebrewFormula } from '../.github/scripts/homebrew-formula.js';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { buildHomebrewFormula, isMainModule } from '../.github/scripts/homebrew-formula.js';
 
 describe('homebrew formula generation', () => {
   it('generates an npm-backed formula for agent-plugin', () => {
@@ -27,5 +29,12 @@ describe('homebrew formula generation', () => {
         sha256: 'a'.repeat(64),
       }),
     ).toThrow('tarballUrl must match version');
+  });
+
+  it('detects the CLI entrypoint when argv uses a relative path', () => {
+    const scriptPath = path.resolve('.github/scripts/homebrew-formula.ts');
+    const relativeArgvPath = path.relative(process.cwd(), scriptPath);
+
+    expect(isMainModule(pathToFileURL(scriptPath).href, relativeArgvPath)).toBe(true);
   });
 });
