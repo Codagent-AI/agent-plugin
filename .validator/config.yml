@@ -15,7 +15,7 @@ entry_points:
       - all-reviewers:
           builtin: all-reviewers
           num_reviews: 1
-          model: gpt-5.3-codex
+          model: gpt-5.6-sol
       - task-compliance:
           builtin: task-compliance
           enabled: false # Opt-in, one-shot by default: activate with `agent-validator run --enable-review task-compliance --context-file <task>`
